@@ -714,10 +714,15 @@ const Quiz = () => {
 
                 const sheetsPayload = JSON.stringify({
                   nomeCompleto: answers.nomeCompleto,
+                  nome: answers.nomeCompleto,
+                  nomeUsuario: answers.nomeUsuario,
+                  nomeFarmacia: answers.nomeFarmacia,
                   email: answers.email,
                   telefone: answers.telefone,
                   documento: normalizedCnpj,
                   tipoDocumento: "cnpj",
+                  estado: answers.estado,
+                  cidade: answers.cidade,
                   faturamento: answers.faturamento,
                   desempenho: answers.desempenho,
                   produtos: answers.produtos,
