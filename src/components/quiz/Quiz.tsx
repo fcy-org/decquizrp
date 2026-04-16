@@ -10,7 +10,7 @@ import logo from "../assets/logo.png";
 
 declare function fbq(...args: unknown[]): void;
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 const CRM_URL = "https://salesyscrm.vercel.app/api/public/leads";
 const LEAD_CAPTURE_KEY = "braveo-principal-pixel-001";
 const SHEETS_URL =
@@ -77,6 +77,10 @@ function getFbclid() {
   return p.get("fbclid") || "";
 }
 
+function normalizeState(value: string) {
+  const normalized = value.trim().toUpperCase();
+  return normalized === "PI" || normalized === "MA" ? normalized : "";
+}
 
 function updateQuizHash(step: number) {
   const nextHash = `#etapa-${step}`;
@@ -248,6 +252,8 @@ const Quiz = () => {
     telefone: "",
   });
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [isSendingSheet, setIsSendingSheet] = useState(false);
+  const [sheetSent, setSheetSent] = useState(false);
   const [diagnosisProgress, setDiagnosisProgress] = useState(0);
   const [diagnosisText, setDiagnosisText] = useState(
     "Preparando seu diagnóstico..."
@@ -258,7 +264,7 @@ const Quiz = () => {
   }, [step]);
 
   useEffect(() => {
-    if (step !== 7) {
+    if (step !== 8) {
       return;
     }
 
@@ -436,6 +442,44 @@ const Quiz = () => {
       case 3:
         return (
           <QuestionScreen
+            emoji="📍"
+            question="Onde fica sua farmácia?"
+            subtitle="(Selecione o estado e informe a cidade)"
+          >
+            <div className="flex flex-col gap-3">
+              <select
+                value={answers.estado}
+                onChange={(e) => setAnswer("estado", normalizeState(e.target.value))}
+                className="w-full p-4 rounded-lg border-2 border-border bg-card text-foreground font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              >
+                <option value="" disabled>
+                  Selecione o estado
+                </option>
+                <option value="PI">Piauí (PI)</option>
+                <option value="MA">Maranhão (MA)</option>
+              </select>
+
+              <QuizInput
+                value={answers.cidade}
+                onChange={(v) => setAnswer("cidade", v)}
+                placeholder="Cidade"
+              />
+            </div>
+
+            <div className="mt-2">
+              <QuizButton
+                onClick={next}
+                disabled={!answers.estado || !answers.cidade}
+              >
+                Continuar
+              </QuizButton>
+            </div>
+          </QuestionScreen>
+        );
+
+      case 4:
+        return (
+          <QuestionScreen
             emoji="🧩"
             question={`${displayName}, hoje, o que mais gera faturamento na sua farmácia?`}
           >
@@ -454,7 +498,7 @@ const Quiz = () => {
           </QuestionScreen>
         );
 
-      case 4:
+      case 5:
         return (
           <QuestionScreen
             emoji="💡"
@@ -475,7 +519,7 @@ const Quiz = () => {
           </QuestionScreen>
         );
 
-      case 5:
+      case 6:
         return (
           <QuestionScreen
             emoji="🧴"
@@ -505,7 +549,7 @@ const Quiz = () => {
           </QuestionScreen>
         );
 
-      case 6:
+      case 7:
         return (
           <QuestionScreen
             emoji="💰"
@@ -527,7 +571,7 @@ const Quiz = () => {
           </QuestionScreen>
         );
 
-      case 7:
+      case 8:
         return (
           <div className="flex flex-col items-center text-center gap-5 py-8">
             <div className="w-16 h-16 rounded-2xl bg-secondary/20 flex items-center justify-center">
@@ -598,7 +642,7 @@ const Quiz = () => {
           </div>
         );
 
-      case 8:
+      case 9:
         return (
           <div className="flex flex-col gap-5 py-4">
             <div className="text-center space-y-2">
@@ -615,6 +659,11 @@ const Quiz = () => {
             </div>
 
             <div className="flex flex-col gap-3">
+              <QuizInput
+                value={answers.nomeCompleto}
+                onChange={(v) => setAnswer("nomeCompleto", v)}
+                placeholder="Nome completo"
+              />
               <QuizInput
                 value={answers.telefone}
                 onChange={(v) => setAnswer("telefone", v)}
@@ -661,12 +710,10 @@ const Quiz = () => {
             >
               {isSendingSheet ? "Enviando dados..." : "Liberar meu diagnóstico"}
             </QuizButton>
-              Liberar meu diagnóstico
-            </QuizButton>
           </div>
         );
 
-      case 9: {
+      case 10: {
         const leadName = getLeadName();
         const firstName = leadName.split(" ")[0] || displayName;
         const insights = getDiagnosisInsights(answers, firstName);
@@ -782,7 +829,6 @@ const Quiz = () => {
                 await Promise.allSettled([crmPromise]);
 
                 const phone = WHATSAPP_NUMBER;
-                const leadName = getLeadName();
                 const msg = encodeURIComponent(
                   `Olá! Fiz o diagnóstico no site e gostaria de falar com um especialista.\n\n` +
                     `Nome: ${leadName}\n` +
