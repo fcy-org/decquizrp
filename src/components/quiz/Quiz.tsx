@@ -343,7 +343,6 @@ const Quiz = () => {
 
   const sendSheetData = async () => {
     const leadName = getLeadName();
-    const normalizedPhone = answers.telefone.replace(/\D/g, "");
     const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
     const utms = getUTMs();
     const fbclid = getFbclid();
@@ -367,28 +366,16 @@ const Quiz = () => {
       ...utms,
     });
 
-    return new Promise<void>((resolve) => {
-      const sent = navigator.sendBeacon(
-        SHEETS_URL,
-        new Blob([sheetsPayload], { type: "text/plain" })
-      );
-
-      if (!sent) {
-        console.warn("sendBeacon falhou, tentando fetch como fallback");
-        fetch(SHEETS_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain" },
-          body: sheetsPayload,
-        })
-          .catch((error) => {
-            console.error("Sheets request error", error);
-          })
-          .finally(resolve);
-      } else {
-        resolve();
-      }
-    });
+    try {
+      await fetch(SHEETS_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: sheetsPayload,
+      });
+    } catch (error) {
+      console.error("Sheets request error", error);
+    }
   };
 
   const renderStep = () => {
