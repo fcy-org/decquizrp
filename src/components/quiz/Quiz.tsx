@@ -331,6 +331,60 @@ const Quiz = () => {
     setTimeout(next, 350);
   };
 
+  const getLeadName = () => {
+    return answers.nomeCompleto || answers.nomeUsuario || displayName;
+  };
+
+  const sendSheetData = async () => {
+    const leadName = getLeadName();
+    const normalizedPhone = answers.telefone.replace(/\D/g, "");
+    const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
+    const utms = getUTMs();
+    const fbclid = getFbclid();
+
+    const sheetsPayload = JSON.stringify({
+      nomeCompleto: leadName,
+      nome: leadName,
+      nomeUsuario: answers.nomeUsuario,
+      nomeFarmacia: answers.nomeFarmacia,
+      email: answers.email,
+      telefone: answers.telefone,
+      documento: normalizedCnpj,
+      tipoDocumento: "cnpj",
+      estado: answers.estado,
+      cidade: answers.cidade,
+      faturamento: answers.faturamento,
+      desempenho: answers.desempenho,
+      produtos: answers.produtos,
+      mediaFaturamento: answers.mediaFaturamento,
+      fbclid,
+      ...utms,
+    });
+
+    return new Promise<void>((resolve) => {
+      const sent = navigator.sendBeacon(
+        SHEETS_URL,
+        new Blob([sheetsPayload], { type: "text/plain" })
+      );
+
+      if (!sent) {
+        console.warn("sendBeacon falhou, tentando fetch como fallback");
+        fetch(SHEETS_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
+          body: sheetsPayload,
+        })
+          .catch((error) => {
+            console.error("Sheets request error", error);
+          })
+          .finally(resolve);
+      } else {
+        resolve();
+      }
+    });
+  };
+
   const renderStep = () => {
     switch (step) {
       case 1:
@@ -562,11 +616,6 @@ const Quiz = () => {
 
             <div className="flex flex-col gap-3">
               <QuizInput
-                value={answers.nomeCompleto}
-                onChange={(v) => setAnswer("nomeCompleto", v)}
-                placeholder="Nome completo"
-              />
-              <QuizInput
                 value={answers.telefone}
                 onChange={(v) => setAnswer("telefone", v)}
                 placeholder="WhatsApp (00) 00000-0000"
@@ -592,22 +641,34 @@ const Quiz = () => {
             </div>
 
             <QuizButton
-              onClick={next}
+              onClick={async () => {
+                if (isSendingSheet) {
+                  return;
+                }
+
+                setIsSendingSheet(true);
+                await sendSheetData();
+                setSheetSent(true);
+                setIsSendingSheet(false);
+                next();
+              }}
               disabled={
-                !answers.nomeCompleto ||
                 answers.telefone.length < 14 ||
                 !isValidEmail(answers.email) ||
                 !validarCNPJ(answers.cnpj)
               }
               variant="cta"
             >
+              {isSendingSheet ? "Enviando dados..." : "Liberar meu diagnóstico"}
+            </QuizButton>
               Liberar meu diagnóstico
             </QuizButton>
           </div>
         );
 
       case 9: {
-        const firstName = answers.nomeCompleto.split(" ")[0] || displayName;
+        const leadName = getLeadName();
+        const firstName = leadName.split(" ")[0] || displayName;
         const insights = getDiagnosisInsights(answers, firstName);
 
         return (
@@ -668,6 +729,7 @@ const Quiz = () => {
                 const fbclid = getFbclid();
                 const normalizedPhone = answers.telefone.replace(/\D/g, "");
                 const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
+                const leadName = getLeadName();
 
                 try {
                   fbq("track", "Lead");
@@ -682,7 +744,7 @@ const Quiz = () => {
                   },
                   body: JSON.stringify({
                     leadCaptureKey: LEAD_CAPTURE_KEY,
-                    name: answers.nomeCompleto,
+                    name: leadName,
                     phone: normalizedPhone,
                     document: normalizedCnpj,
                     documentType: "cnpj",
@@ -712,55 +774,18 @@ const Quiz = () => {
                     console.error("CRM lead capture request error", error);
                   });
 
-                const sheetsPayload = JSON.stringify({
-                  nomeCompleto: answers.nomeCompleto,
-                  nome: answers.nomeCompleto,
-                  nomeUsuario: answers.nomeUsuario,
-                  nomeFarmacia: answers.nomeFarmacia,
-                  email: answers.email,
-                  telefone: answers.telefone,
-                  documento: normalizedCnpj,
-                  tipoDocumento: "cnpj",
-                  estado: answers.estado,
-                  cidade: answers.cidade,
-                  faturamento: answers.faturamento,
-                  desempenho: answers.desempenho,
-                  produtos: answers.produtos,
-                  mediaFaturamento: answers.mediaFaturamento,
-                  fbclid,
-                  ...utms,
-                });
+                if (!sheetSent) {
+                  await sendSheetData();
+                  setSheetSent(true);
+                }
 
-                const sheetsPromise = new Promise<void>((resolve) => {
-                  const sent = navigator.sendBeacon(
-                    SHEETS_URL,
-                    new Blob([sheetsPayload], { type: "text/plain" })
-                  );
-                  if (!sent) {
-                    console.warn(
-                      "sendBeacon falhou, tentando fetch como fallback"
-                    );
-                    fetch(SHEETS_URL, {
-                      method: "POST",
-                      mode: "no-cors",
-                      headers: { "Content-Type": "text/plain" },
-                      body: sheetsPayload,
-                    })
-                      .catch((error) => {
-                        console.error("Sheets request error", error);
-                      })
-                      .finally(resolve);
-                  } else {
-                    resolve();
-                  }
-                });
-
-                await Promise.allSettled([crmPromise, sheetsPromise]);
+                await Promise.allSettled([crmPromise]);
 
                 const phone = WHATSAPP_NUMBER;
+                const leadName = getLeadName();
                 const msg = encodeURIComponent(
                   `Olá! Fiz o diagnóstico no site e gostaria de falar com um especialista.\n\n` +
-                    `Nome: ${answers.nomeCompleto}\n` +
+                    `Nome: ${leadName}\n` +
                     `Telefone: ${answers.telefone}\n` +
                     `CNPJ: ${answers.cnpj}`
                 );
