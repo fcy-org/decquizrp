@@ -818,11 +818,7 @@ const Quiz = () => {
 
                 await Promise.allSettled([crmPromise]);
 
-<<<<<<< HEAD
                 const phone = WHATSAPP_NUMBERS[answers.estado] ?? WHATSAPP_NUMBERS["PI"];
-=======
-                const phone = WHATSAPP_NUMBER;
->>>>>>> bd6f9e51cafdc29dd9d1e1106ade457d6118e99b
                 const msg = encodeURIComponent(
                   `Olá! Fiz o diagnóstico no site e gostaria de falar com um especialista.\n\n` +
                     `Nome: ${leadName}\n` +
