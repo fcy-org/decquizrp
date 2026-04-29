@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      "/api/new-tracking": {
+        target: "https://newtracking-sales-sys.vercel.app",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/new-tracking/, "/api/public"),
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

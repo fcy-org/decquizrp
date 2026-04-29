@@ -15,6 +15,8 @@ const CRM_URL = "https://salesyscrm.vercel.app/api/public/leads";
 const LEAD_CAPTURE_KEY = "braveo-principal-pixel-001";
 const SHEETS_URL =
   "https://script.google.com/macros/s/AKfycbyP-QbHP8R7abyDzqHiG3g-k8YmJhRrWk9rDeCpxEsPwROi82c5P1OfIzPO0paQa6Xo4Q/exec";
+const NEW_TRACKING_URL = "/api/new-tracking/leads";
+const NEW_TRACKING_KEY = "u7hjat5pjvfs8m7ls2ndwefn";
 const WHATSAPP_NUMBERS: Record<string, string> = {
   MA: "558695319157",
   PI: "558694271798",
@@ -78,6 +80,48 @@ function getUTMs() {
 function getFbclid() {
   const p = new URLSearchParams(window.location.search);
   return p.get("fbclid") || "";
+}
+
+function getCookie(name: string): string {
+  const match = document.cookie.split(";").find((c) => c.trim().startsWith(name + "="));
+  return match ? match.split("=").slice(1).join("=").trim() : "";
+}
+
+function getFbc(): string {
+  const cookie = getCookie("_fbc");
+  if (cookie) return cookie;
+  const fbclid = getFbclid();
+  if (fbclid) return `fb.1.${Date.now()}.${fbclid}`;
+  return "";
+}
+
+function getFbp(): string {
+  return getCookie("_fbp");
+}
+
+function getTrackingParams() {
+  const utms = getUTMs();
+  return {
+    fbc: getFbc(),
+    fbp: getFbp(),
+    event_id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    ...utms,
+  };
+}
+
+async function sendNewTracking(name: string, phone: string, email: string) {
+  try {
+    await fetch(NEW_TRACKING_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-lead-capture-key": NEW_TRACKING_KEY,
+      },
+      body: JSON.stringify({ name, phone, email, ...getTrackingParams() }),
+    });
+  } catch (error) {
+    console.error("New tracking request error", error);
+  }
 }
 
 function normalizeState(value: string) {
@@ -686,7 +730,14 @@ const Quiz = () => {
                 }
 
                 setIsSendingSheet(true);
-                await sendSheetData();
+                const leadName = getLeadName();
+                const normalizedPhone = answers.telefone.replace(/\D/g, "");
+
+                await Promise.allSettled([
+                  sendSheetData(),
+                  sendNewTracking(leadName, normalizedPhone, answers.email),
+                ]);
+
                 setSheetSent(true);
                 setIsSendingSheet(false);
                 next();
@@ -774,6 +825,8 @@ const Quiz = () => {
                   // pixel pode não estar carregado
                 }
 
+                const newTrackingPromise = sendNewTracking(leadName, normalizedPhone, answers.email);
+
                 const crmPromise = fetch(CRM_URL, {
                   method: "POST",
                   headers: {
@@ -816,7 +869,7 @@ const Quiz = () => {
                   setSheetSent(true);
                 }
 
-                await Promise.allSettled([crmPromise]);
+                await Promise.allSettled([crmPromise, newTrackingPromise]);
 
                 const phone = WHATSAPP_NUMBERS[answers.estado] ?? WHATSAPP_NUMBERS["PI"];
                 const msg = encodeURIComponent(
