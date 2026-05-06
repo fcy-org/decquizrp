@@ -30,6 +30,7 @@ const slideVariants = {
 
 type Answers = {
   tipoLoja: string;
+  tipoLojaOutro: string;
   investimentoMercadoria: string;
   estoqueParado: string;
   areaMelhorar: string;
@@ -287,6 +288,7 @@ const Quiz = () => {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<Answers>({
     tipoLoja: "",
+    tipoLojaOutro: "",
     investimentoMercadoria: "",
     estoqueParado: "",
     areaMelhorar: "",
@@ -607,10 +609,47 @@ const Quiz = () => {
               <OptionButton
                 key={opt}
                 label={opt}
-                selected={answers.tipoLoja === opt}
-                onClick={() => selectAndNext("tipoLoja", opt)}
+                selected={
+                  answers.tipoLoja === opt ||
+                  (opt === "Outro" && Boolean(answers.tipoLojaOutro))
+                }
+                onClick={() => {
+                  if (opt === "Outro") {
+                    setAnswer("tipoLoja", opt);
+                    return;
+                  }
+
+                  setAnswers((prev) => ({
+                    ...prev,
+                    tipoLoja: opt,
+                    tipoLojaOutro: "",
+                  }));
+                  setTimeout(next, 350);
+                }}
               />
             ))}
+
+            {(answers.tipoLoja === "Outro" || answers.tipoLojaOutro) && (
+              <>
+                <QuizInput
+                  value={answers.tipoLojaOutro}
+                  onChange={(v) => setAnswer("tipoLojaOutro", v)}
+                  placeholder="Digite o tipo de loja"
+                />
+
+                <div className="mt-2">
+                  <QuizButton
+                    onClick={() => {
+                      setAnswer("tipoLoja", answers.tipoLojaOutro.trim());
+                      setTimeout(next, 150);
+                    }}
+                    disabled={!answers.tipoLojaOutro.trim()}
+                  >
+                    Continuar
+                  </QuizButton>
+                </div>
+              </>
+            )}
           </QuestionScreen>
         );
 
