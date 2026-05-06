@@ -92,10 +92,9 @@ function getCookie(name: string): string {
   return match ? match.split("=").slice(1).join("=").trim() : "";
 }
 
-function getFbc(): string {
+function getFbc(fbclid: string): string {
   const cookie = getCookie("_fbc");
   if (cookie) return cookie;
-  const fbclid = getFbclid();
   if (fbclid) return `fb.1.${Date.now()}.${fbclid}`;
   return "";
 }
@@ -104,14 +103,18 @@ function getFbp(): string {
   return getCookie("_fbp");
 }
 
-// eventId é estável por sessão — passado explicitamente para garantir deduplicação Meta
+// Capturado uma única vez no carregamento da página — imune a qualquer mudança
+// de URL que ocorra durante o quiz (hash updates, redirects internos, etc.)
+const PAGE_UTMS = getUTMs();
+const PAGE_FBCLID = getFbclid();
+
 function getTrackingParams(eventId: string) {
-  const utms = getUTMs();
   return {
-    fbc: getFbc(),
+    fbc: getFbc(PAGE_FBCLID),
     fbp: getFbp(),
     event_id: eventId,
-    ...utms,
+    fbclid: PAGE_FBCLID,
+    ...PAGE_UTMS,
   };
 }
 
@@ -430,8 +433,8 @@ const Quiz = () => {
   const sendSheetData = useCallback(async () => {
     const leadName = getLeadName();
     const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
-    const utms = getUTMs();
-    const fbclid = getFbclid();
+    const utms = PAGE_UTMS;
+    const fbclid = PAGE_FBCLID;
 
     const sheetsPayload = JSON.stringify({
       nomeCompleto: leadName,
@@ -497,8 +500,8 @@ const Quiz = () => {
 
     setIsSubmittingLead(true);
 
-    const utms = getUTMs();
-    const fbclid = getFbclid();
+    const utms = PAGE_UTMS;
+    const fbclid = PAGE_FBCLID;
     const normalizedPhone = answers.telefone.replace(/\D/g, "");
     const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
     const leadName = getLeadName();
