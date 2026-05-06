@@ -15,7 +15,7 @@ const CRM_URL = "https://salesyscrm.vercel.app/api/public/leads";
 const LEAD_CAPTURE_KEY = "braveo-principal-pixel-001";
 const SHEETS_URL =
   "https://script.google.com/macros/s/AKfycbyP-QbHP8R7abyDzqHiG3g-k8YmJhRrWk9rDeCpxEsPwROi82c5P1OfIzPO0paQa6Xo4Q/exec";
-const NEW_TRACKING_URL = "https://newtracking-sales-sys.vercel.app/api/public/leads";
+const NEW_TRACKING_URL = "/api/new-tracking/leads";
 const NEW_TRACKING_KEY = "u7hjat5pjvfs8m7ls2ndwefn";
 const WHATSAPP_NUMBERS: Record<string, string> = {
   MA: "558695319157",
