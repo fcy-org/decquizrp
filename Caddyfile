@@ -1,0 +1,16 @@
+:{$PORT}
+
+encode gzip
+
+handle_path /api/new-tracking/* {
+	rewrite * /api/public{path}
+	reverse_proxy https://newtracking-sales-sys.vercel.app {
+		header_up Host newtracking-sales-sys.vercel.app
+	}
+}
+
+handle {
+	root * /app/dist
+	try_files {path} /index.html
+	file_server
+}
