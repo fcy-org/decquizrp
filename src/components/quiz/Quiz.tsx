@@ -115,15 +115,22 @@ function getTrackingParams(eventId: string) {
   };
 }
 
-async function sendNewTracking(
-  name: string,
-  phone: string,
-  email: string,
-  document: string,
-  state: string,
-  city: string,
-  eventId: string
-) {
+interface NewTrackingPayload {
+  name: string;
+  phone: string;
+  email: string;
+  cnpj: string;
+  state: string;
+  city: string;
+  eventId: string;
+  tipoLoja?: string;
+  investimentoMercadoria?: string;
+  estoqueParado?: string;
+  areaMelhorar?: string;
+  produtos?: string[];
+}
+
+async function sendNewTracking(p: NewTrackingPayload) {
   try {
     const response = await fetch(NEW_TRACKING_URL, {
       method: "POST",
@@ -132,17 +139,28 @@ async function sendNewTracking(
         "x-lead-capture-key": NEW_TRACKING_KEY,
       },
       body: JSON.stringify({
-        name,
-        phone,
-        email,
-        document,
-        cnpj: document,
+        // campos de identificação
+        name: p.name,
+        phone: p.phone,
+        email: p.email,
+        cnpj: p.cnpj,
+        document: p.cnpj,
         documentType: "cnpj",
-        state,
-        city,
-        estado: state,
-        cidade: city,
-        ...getTrackingParams(eventId),
+        // localização — usados para rotear ao consultor correto (MA / PI)
+        state: p.state,
+        city: p.city,
+        estado: p.state,
+        cidade: p.city,
+        // chave de integração — necessária para o NT rotear para o CRM e planilha
+        leadCaptureKey: LEAD_CAPTURE_KEY,
+        // dados do quiz — usados pela planilha dos consultores
+        tipoLoja: p.tipoLoja,
+        investimentoMercadoria: p.investimentoMercadoria,
+        estoqueParado: p.estoqueParado,
+        areaMelhorar: p.areaMelhorar,
+        produtos: p.produtos,
+        // rastreamento Meta
+        ...getTrackingParams(p.eventId),
       }),
     });
 
@@ -452,18 +470,25 @@ const Quiz = () => {
 
   // Envia para o New Tracking apenas uma vez por sessão, independente de quantas
   // vezes for chamada (etapa 8 ao confirmar form + etapa 9 no auto-redirect)
-  const sendNewTrackingOnce = useCallback(async (
-    name: string,
-    phone: string,
-    email: string,
-    document: string,
-    state: string,
-    city: string
-  ) => {
+  const sendNewTrackingOnce = useCallback(async () => {
     if (newTrackingSentRef.current) return;
     newTrackingSentRef.current = true;
-    await sendNewTracking(name, phone, email, document, state, city, eventIdRef.current);
-  }, []);
+
+    await sendNewTracking({
+      name: getLeadName(),
+      phone: answers.telefone.replace(/\D/g, ""),
+      email: answers.email,
+      cnpj: answers.cnpj.replace(/\D/g, ""),
+      state: answers.estado,
+      city: answers.cidade,
+      eventId: eventIdRef.current,
+      tipoLoja: answers.tipoLoja,
+      investimentoMercadoria: answers.investimentoMercadoria,
+      estoqueParado: answers.estoqueParado,
+      areaMelhorar: answers.areaMelhorar,
+      produtos: answers.produtos,
+    });
+  }, [answers, getLeadName]);
 
   const redirectToSpecialist = useCallback(async () => {
     if (isSubmittingLead) {
@@ -478,6 +503,8 @@ const Quiz = () => {
     const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
     const leadName = getLeadName();
     const eventId = eventIdRef.current;
+    const fbc = getFbc();
+    const fbp = getFbp();
 
     // eventID correlaciona o evento browser com a chamada server-side para deduplicação
     try {
@@ -487,14 +514,7 @@ const Quiz = () => {
     }
 
     // New Tracking — protegido pelo newTrackingSentRef, não dispara duas vezes
-    const newTrackingPromise = sendNewTrackingOnce(
-      leadName,
-      normalizedPhone,
-      answers.email,
-      normalizedCnpj,
-      answers.estado,
-      answers.cidade
-    );
+    const newTrackingPromise = sendNewTrackingOnce();
 
     // CRM — agora recebe todos os campos de rastreamento alinhados ao New Tracking
     const crmPromise = fetch(CRM_URL, {
@@ -514,8 +534,8 @@ const Quiz = () => {
         city: answers.cidade,
         estado: answers.estado,
         cidade: answers.cidade,
-        fbc: getFbc(),
-        fbp: getFbp(),
+        fbc,
+        fbp,
         event_id: eventId,
         utm_source: utms.utm_source,
         utm_medium: utms.utm_medium,
@@ -938,14 +958,7 @@ const Quiz = () => {
 
                 await Promise.allSettled([
                   sendSheetData(),
-                  sendNewTrackingOnce(
-                    leadName,
-                    normalizedPhone,
-                    answers.email,
-                    normalizedCnpj,
-                    answers.estado,
-                    answers.cidade
-                  ),
+                  sendNewTrackingOnce(),
                 ]);
 
                 setSheetSent(true);
