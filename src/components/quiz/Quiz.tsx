@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Sparkles, TrendingUp, MessageCircle } from "lucide-react";
+import { ShoppingBag, Sparkles, TrendingUp } from "lucide-react";
 import ProgressBar from "./ProgressBar";
 import OptionButton from "./OptionButton";
 import QuizButton from "./QuizButton";
@@ -10,12 +10,12 @@ import logo from "../assets/logo.png";
 
 declare function fbq(...args: unknown[]): void;
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 9;
 const CRM_URL = "https://salesyscrm.vercel.app/api/public/leads";
 const LEAD_CAPTURE_KEY = "braveo-principal-pixel-001";
 const SHEETS_URL =
   "https://script.google.com/macros/s/AKfycbyP-QbHP8R7abyDzqHiG3g-k8YmJhRrWk9rDeCpxEsPwROi82c5P1OfIzPO0paQa6Xo4Q/exec";
-const NEW_TRACKING_URL = "/api/new-tracking/leads";
+const NEW_TRACKING_URL = "https://newtracking-sales-sys.vercel.app/api/public/leads";
 const NEW_TRACKING_KEY = "u7hjat5pjvfs8m7ls2ndwefn";
 const WHATSAPP_NUMBERS: Record<string, string> = {
   MA: "558695319157",
@@ -29,6 +29,10 @@ const slideVariants = {
 };
 
 type Answers = {
+  tipoLoja: string;
+  investimentoMercadoria: string;
+  estoqueParado: string;
+  areaMelhorar: string;
   faturamento: string;
   dor: string;
   desempenho: string;
@@ -109,16 +113,42 @@ function getTrackingParams() {
   };
 }
 
-async function sendNewTracking(name: string, phone: string, email: string) {
+async function sendNewTracking(
+  name: string,
+  phone: string,
+  email: string,
+  document: string,
+  state: string,
+  city: string
+) {
   try {
-    await fetch(NEW_TRACKING_URL, {
+    const response = await fetch(NEW_TRACKING_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-lead-capture-key": NEW_TRACKING_KEY,
       },
-      body: JSON.stringify({ name, phone, email, ...getTrackingParams() }),
+      body: JSON.stringify({
+        name,
+        phone,
+        email,
+        document,
+        documentType: "cnpj",
+        state,
+        city,
+        estado: state,
+        cidade: city,
+        ...getTrackingParams(),
+      }),
     });
+
+    if (!response.ok) {
+      const responseData = await response.json().catch(() => null);
+      console.error("New tracking lead capture failed", {
+        status: response.status,
+        response: responseData,
+      });
+    }
   } catch (error) {
     console.error("New tracking request error", error);
   }
@@ -176,52 +206,27 @@ type DiagnosisInsight = {
 
 function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[] {
   const insights: DiagnosisInsight[] = [];
+  const loja = answers.tipoLoja || "loja";
 
-  // Insight 1: oportunidade principal — faturamento atual × desempenho em higiene
-  if (answers.faturamento === "Medicamentos") {
-    if (answers.desempenho === "Vendo pouco") {
-      insights.push({
-        icon: "⚠️",
-        title: "Dependência alta de medicamentos",
-        text: `${name}, sua farmácia ainda depende muito de medicamentos — categoria de margem baixa e alta concorrência. Higiene e beleza pode representar até 30% a mais no seu faturamento, com margens muito superiores.`,
-        highlight: true,
-      });
-    } else if (answers.desempenho === "Poderia melhorar") {
-      insights.push({
-        icon: "📈",
-        title: "Potencial de crescimento identificado",
-        text: `${name}, você tem base sólida em medicamentos, mas higiene e beleza ainda não está rendendo o que poderia. Com os produtos e a estratégia certos, é possível ampliar esse canal em até 40% em poucos meses.`,
-        highlight: true,
-      });
-    } else {
-      insights.push({
-        icon: "🚀",
-        title: "Você já está no caminho certo",
-        text: `${name}, ótimo sinal — você já vende bem em higiene mesmo tendo medicamentos como base. Agora é hora de escalar esse canal com produtos de alto giro e melhor margem.`,
-        highlight: true,
-      });
-    }
-  } else if (answers.faturamento === "Perfumaria e higiene") {
-    if (answers.desempenho === "Vende muito bem") {
-      insights.push({
-        icon: "🏆",
-        title: "Perfil de alta performance",
-        text: `${name}, sua farmácia já tem o foco certo — higiene e beleza gera ticket médio mais alto. O próximo passo é otimizar o mix e o abastecimento para maximizar vendas sem rupturas.`,
-        highlight: true,
-      });
-    } else {
-      insights.push({
-        icon: "💡",
-        title: "Oportunidade de consistência",
-        text: `${name}, higiene e beleza é seu foco, mas o desempenho ainda pode melhorar. Provavelmente é uma questão de mix de produtos ou estratégia de exposição — algo resolvível rapidamente com os fornecedores certos.`,
-        highlight: true,
-      });
-    }
+  if (answers.estoqueParado === "Muito") {
+    insights.push({
+      icon: "⚠️",
+      title: "Estoque parado travando lucro",
+      text: `${name}, sua ${loja.toLowerCase()} pode estar com capital preso em produtos de baixo giro. Reorganizar o mix de higiene, beleza e perfumaria ajuda a liberar caixa e abrir espaço para itens que vendem todos os dias.`,
+      highlight: true,
+    });
+  } else if (answers.estoqueParado === "Um pouco") {
+    insights.push({
+      icon: "📦",
+      title: "Oportunidade escondida no estoque",
+      text: `${name}, existe sinal de estoque parado, mas ainda há espaço para corrigir rápido. O diagnóstico aponta onde ajustar compras para melhorar giro, ticket e margem.`,
+      highlight: true,
+    });
   } else {
     insights.push({
-      icon: "💡",
-      title: "Mix diversificado — hora de ampliar",
-      text: `${name}, suplementos já são um diferencial estratégico. Combinando com as categorias certas de higiene e beleza, você pode aumentar o ticket médio da sua farmácia de forma consistente.`,
+      icon: "📈",
+      title: "Base saudável para crescer",
+      text: `${name}, se quase não há produto parado, o próximo passo é usar esse controle para fortalecer categorias que aumentam ticket médio sem pesar o estoque.`,
       highlight: true,
     });
   }
@@ -234,7 +239,7 @@ function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[
     },
     "Higiene Bucal": {
       title: "Higiene Bucal: maior giro do Nordeste",
-      text: "Higiene bucal tem o maior índice de giro nas farmácias do Piauí e Maranhão. Estar bem abastecido com as marcas certas evita perda de vendas por ruptura.",
+      text: "Higiene bucal tem alto índice de giro em lojas do Piauí e Maranhão. Estar bem abastecido com as marcas certas evita perda de vendas por ruptura.",
     },
     "Capilar": {
       title: "Capilar: margem acima da média",
@@ -242,7 +247,7 @@ function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[
     },
     "Cuidado com a Pele": {
       title: "Cuidados com a Pele: crescimento acelerado",
-      text: "Cuidados com a pele é a categoria de maior crescimento no setor. Farmácias que investiram nessa linha aumentaram o faturamento sem depender de prescrições.",
+      text: "Cuidados com a pele é uma categoria em crescimento no setor. Lojas que investem nessa linha podem aumentar o faturamento com produtos de recompra e maior valor percebido.",
     },
   };
 
@@ -251,28 +256,27 @@ function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[
     insights.push({ icon: "🧴", ...catMsg[destaque] });
   }
 
-  // Insight 3: projeção baseada no faturamento mensal
-  const projecao: Record<string, { title: string; text: string }> = {
-    "Até R$80 mil": {
-      title: "Projeção realista para o seu porte",
-      text: "Farmácias com perfil similar saíram de R$80 mil para R$110 mil em menos de 6 meses focando nas categorias certas de higiene e beleza.",
+  const areaMsg: Record<string, { title: string; text: string }> = {
+    "Giro de produtos": {
+      title: "Produtos que deveriam girar mais",
+      text: "A prioridade é identificar o que vende rápido na sua região e reduzir compras que deixam dinheiro parado na prateleira.",
     },
-    "R$80 mil – R$100 mil": {
-      title: "Potencial de crescimento no curto prazo",
-      text: "Com os produtos e estratégia certos, farmácias nessa faixa aumentaram o ticket médio em até 25% em 90 dias — sem grandes investimentos.",
+    "Ticket médio": {
+      title: "Ticket médio com categorias certas",
+      text: "Combinações de higiene, beleza e perfumaria podem elevar o valor de cada compra sem depender de descontos agressivos.",
     },
-    "R$100 mil – R$300 mil": {
-      title: "Escala já comprovada no seu nível",
-      text: "No seu nível de faturamento, uma estratégia bem executada em higiene pode adicionar de R$20 mil a R$50 mil por mês com as categorias de maior giro.",
+    "Mix de categorias": {
+      title: "Mix mais inteligente por categoria",
+      text: "Um mix equilibrado evita excesso de produtos parecidos e dá mais força para categorias com recompra e margem melhor.",
     },
-    "Acima de 300 mil": {
-      title: "Estratégia de crescimento sustentável",
-      text: "Para farmácias do seu porte, higiene e beleza é o que separa as que continuam crescendo das que estacionam. O mix certo faz toda a diferença.",
+    "Margem de lucro": {
+      title: "Margem com compra mais estratégica",
+      text: "Ajustar o mix ajuda sua loja a vender produtos com melhor retorno, não apenas itens que ocupam espaço no estoque.",
     },
   };
 
-  if (answers.mediaFaturamento && projecao[answers.mediaFaturamento]) {
-    insights.push({ icon: "💰", ...projecao[answers.mediaFaturamento] });
+  if (answers.areaMelhorar && areaMsg[answers.areaMelhorar]) {
+    insights.push({ icon: "💰", ...areaMsg[answers.areaMelhorar] });
   }
 
   return insights;
@@ -281,6 +285,10 @@ function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[
 const Quiz = () => {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<Answers>({
+    tipoLoja: "",
+    investimentoMercadoria: "",
+    estoqueParado: "",
+    areaMelhorar: "",
     faturamento: "",
     dor: "",
     desempenho: "",
@@ -302,6 +310,9 @@ const Quiz = () => {
   const [isSendingSheet, setIsSendingSheet] = useState(false);
   const [sheetSent, setSheetSent] = useState(false);
   const [diagnosisProgress, setDiagnosisProgress] = useState(0);
+  const [redirectProgress, setRedirectProgress] = useState(0);
+  const [redirectSeconds, setRedirectSeconds] = useState(3);
+  const redirectStartedRef = useRef(false);
   const [diagnosisText, setDiagnosisText] = useState(
     "Preparando seu diagnóstico..."
   );
@@ -311,15 +322,15 @@ const Quiz = () => {
   }, [step]);
 
   useEffect(() => {
-    if (step !== 8) {
+    if (step !== 7) {
       return;
     }
 
     const textSteps = [
-      "Analisando faturamento e ticket médio...",
-      "Verificando desempenho em higiene e beleza...",
-      "Entendendo as categorias mais vendidas...",
-      "Finalizando seu diagnóstico personalizado...",
+      "Analisando seu perfil de compra...",
+      "Comparando com padrões de lojas da sua região...",
+      "Identificando oportunidades escondidas no estoque...",
+      "Finalizando seu diagnóstico de giro inteligente...",
     ];
 
     setDiagnosisProgress(0);
@@ -405,6 +416,10 @@ const Quiz = () => {
       tipoDocumento: "cnpj",
       estado: answers.estado,
       cidade: answers.cidade,
+      tipoLoja: answers.tipoLoja,
+      investimentoMercadoria: answers.investimentoMercadoria,
+      estoqueParado: answers.estoqueParado,
+      areaMelhorar: answers.areaMelhorar,
       faturamento: answers.faturamento,
       desempenho: answers.desempenho,
       produtos: answers.produtos,
@@ -425,6 +440,125 @@ const Quiz = () => {
     }
   };
 
+  const redirectToSpecialist = async () => {
+    if (isSubmittingLead) {
+      return;
+    }
+
+    setIsSubmittingLead(true);
+
+    const utms = getUTMs();
+    const fbclid = getFbclid();
+    const normalizedPhone = answers.telefone.replace(/\D/g, "");
+    const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
+    const leadName = getLeadName();
+
+    try {
+      fbq("track", "Lead");
+    } catch (_) {
+      // pixel pode não estar carregado
+    }
+
+    const newTrackingPromise = sendNewTracking(
+      leadName,
+      normalizedPhone,
+      answers.email,
+      normalizedCnpj,
+      answers.estado,
+      answers.cidade
+    );
+
+    const crmPromise = fetch(CRM_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leadCaptureKey: LEAD_CAPTURE_KEY,
+        name: leadName,
+        phone: normalizedPhone,
+        document: normalizedCnpj,
+        documentType: "cnpj",
+        utm_source: utms.utm_source,
+        utm_medium: utms.utm_medium,
+        utm_campaign: utms.utm_campaign,
+        utm_content: utms.utm_content,
+        utm_term: utms.utm_term,
+        fbclid,
+      }),
+    })
+      .then(async (response) => {
+        const crmData = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          console.error("CRM lead capture failed", {
+            status: response.status,
+            response: crmData,
+          });
+        } else if (crmData?.duplicate) {
+          console.warn("CRM lead already exists", crmData);
+        } else {
+          console.info("CRM lead created successfully", crmData);
+        }
+      })
+      .catch((error) => {
+        console.error("CRM lead capture request error", error);
+      });
+
+    if (!sheetSent) {
+      await sendSheetData();
+      setSheetSent(true);
+    }
+
+    await Promise.allSettled([crmPromise, newTrackingPromise]);
+
+    const phone = WHATSAPP_NUMBERS[answers.estado] ?? WHATSAPP_NUMBERS["PI"];
+    const msg = encodeURIComponent(
+      `Olá! Fiz o diagnóstico no site e gostaria de falar com um especialista.\n\n` +
+        `Nome: ${leadName}\n` +
+        `Telefone: ${answers.telefone}\n` +
+        `CNPJ: ${answers.cnpj}\n` +
+        `Tipo de loja: ${answers.tipoLoja}\n` +
+        `Investimento mensal: ${answers.investimentoMercadoria}\n` +
+        `Estoque parado: ${answers.estoqueParado}\n` +
+        `Área que quer melhorar: ${answers.areaMelhorar}`
+    );
+
+    window.location.href = `https://wa.me/${phone}?text=${msg}`;
+  };
+
+  useEffect(() => {
+    if (step !== 9 || redirectStartedRef.current) {
+      return;
+    }
+
+    redirectStartedRef.current = true;
+    setRedirectProgress(0);
+    setRedirectSeconds(3);
+
+    const progressInterval = window.setInterval(() => {
+      setRedirectProgress((current) => Math.min(current + 100 / 60, 100));
+    }, 50);
+
+    const secondsInterval = window.setInterval(() => {
+      setRedirectSeconds((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    const redirectTimeout = window.setTimeout(() => {
+      window.clearInterval(progressInterval);
+      window.clearInterval(secondsInterval);
+      setRedirectProgress(100);
+      setRedirectSeconds(0);
+      void redirectToSpecialist();
+    }, 3000);
+
+    return () => {
+      window.clearInterval(progressInterval);
+      window.clearInterval(secondsInterval);
+      window.clearTimeout(redirectTimeout);
+    };
+  }, [step]);
+
   const renderStep = () => {
     switch (step) {
       case 1:
@@ -435,13 +569,18 @@ const Quiz = () => {
             </div>
 
             <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">
-              Descubra como aumentar o faturamento da sua farmácia{" "}
-              <span className="text-primary">sem depender de medicamentos</span>
+              Seu estoque pode estar travando{" "}
+              <span className="text-primary">o lucro da sua loja</span>
             </h1>
 
             <p className="text-muted-foreground text-base md:text-lg max-w-md">
-              Identifique quais produtos de alto giro podem aumentar seu ticket
-              médio e gerar vendas todos os dias
+              Descubra em 2 minutos quais produtos de higiene e beleza podem
+              destravar seu faturamento.
+            </p>
+
+            <p className="text-primary font-semibold text-sm md:text-base max-w-md">
+              +120 lojas no MA e PI já aplicaram esse diagnóstico. Frete grátis
+              para Maranhão e Piauí.
             </p>
 
             <div className="w-full mt-4">
@@ -455,78 +594,63 @@ const Quiz = () => {
       case 2:
         return (
           <QuestionScreen
-            emoji="👋"
-            question="Qual o seu nome?"
-            subtitle="(Como devemos te chamar?)"
+            emoji="🏪"
+            question="Qual tipo de loja você tem?"
           >
-            <QuizInput
-              value={answers.nomeUsuario}
-              onChange={(v) => setAnswer("nomeUsuario", v)}
-              placeholder="Digite seu nome"
-            />
-
-            <div className="mt-2">
-              <QuizButton onClick={next} disabled={!answers.nomeUsuario}>
-                Continuar
-              </QuizButton>
-            </div>
+            {[
+              "Farmácia",
+              "Loja de cosméticos",
+              "Perfumaria",
+              "Outro",
+            ].map((opt) => (
+              <OptionButton
+                key={opt}
+                label={opt}
+                selected={answers.tipoLoja === opt}
+                onClick={() => selectAndNext("tipoLoja", opt)}
+              />
+            ))}
           </QuestionScreen>
         );
 
       case 3:
         return (
           <QuestionScreen
-            emoji="📍"
-            question="Onde fica sua farmácia?"
-            subtitle="(Selecione o estado e informe a cidade)"
+            emoji="💳"
+            question="Quanto você investe por mês em mercadoria?"
           >
-            <div className="flex flex-col gap-3">
-              <select
-                value={answers.estado}
-                onChange={(e) => setAnswer("estado", normalizeState(e.target.value))}
-                className="w-full p-4 rounded-lg border-2 border-border bg-card text-foreground font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              >
-                <option value="" disabled>
-                  Selecione o estado
-                </option>
-                <option value="PI">Piauí (PI)</option>
-                <option value="MA">Maranhão (MA)</option>
-              </select>
-
-              <QuizInput
-                value={answers.cidade}
-                onChange={(v) => setAnswer("cidade", v)}
-                placeholder="Cidade"
+            {[
+              "Até R$1.000",
+              "R$1.000 – R$5.000",
+              "R$5.000 – R$15.000",
+              "Acima de R$15.000",
+            ].map((opt) => (
+              <OptionButton
+                key={opt}
+                label={opt}
+                selected={answers.investimentoMercadoria === opt}
+                onClick={() => selectAndNext("investimentoMercadoria", opt)}
               />
-            </div>
-
-            <div className="mt-2">
-              <QuizButton
-                onClick={next}
-                disabled={!answers.estado || !answers.cidade}
-              >
-                Continuar
-              </QuizButton>
-            </div>
+            ))}
           </QuestionScreen>
         );
 
       case 4:
         return (
           <QuestionScreen
-            emoji="🧩"
-            question={`${displayName}, hoje, o que mais gera faturamento na sua farmácia?`}
+            emoji="📦"
+            question="Hoje, você sente que tem produto parado no estoque?"
           >
             {[
-              "Medicamentos",
-              "Perfumaria e higiene",
-              "Suplementos"
+              "Muito",
+              "Um pouco",
+              "Quase nada",
             ].map((opt) => (
               <OptionButton
                 key={opt}
                 label={opt}
-                selected={answers.faturamento === opt}
-                onClick={() => selectAndNext("faturamento", opt)}
+                selected={answers.estoqueParado === opt}
+                onClick={() => selectAndNext("estoqueParado", opt)}
               />
             ))}
           </QuestionScreen>
@@ -536,18 +660,19 @@ const Quiz = () => {
         return (
           <QuestionScreen
             emoji="💡"
-            question={`${displayName}, como está o desempenho da sua linha de higiene e beleza?`}
+            question="Qual dessas áreas você mais quer melhorar?"
           >
             {[
-              "Vende muito bem",
-              "Poderia melhorar",
-              "Vendo pouco",
+              "Giro de produtos",
+              "Ticket médio",
+              "Mix de categorias",
+              "Margem de lucro",
             ].map((opt) => (
               <OptionButton
                 key={opt}
                 label={opt}
-                selected={answers.desempenho === opt}
-                onClick={() => selectAndNext("desempenho", opt)}
+                selected={answers.areaMelhorar === opt}
+                onClick={() => selectAndNext("areaMelhorar", opt)}
               />
             ))}
           </QuestionScreen>
@@ -557,7 +682,7 @@ const Quiz = () => {
         return (
           <QuestionScreen
             emoji="🧴"
-            question={`Quais dessas categorias você mais trabalha, ${displayName}?`}
+            question="Quais categorias de higiene, beleza e perfumaria você mais trabalha?"
             subtitle="(Pode selecionar mais de uma opção)"
           >
             {[
@@ -585,28 +710,6 @@ const Quiz = () => {
 
       case 7:
         return (
-          <QuestionScreen
-            emoji="💰"
-            question={`E qual a média de faturamento mensal da sua farmácia, ${displayName}?`}
-          >
-            {[
-              "Até R$80 mil",
-              "R$80 mil – R$100 mil",
-              "R$100 mil – R$300 mil",
-              "Acima de 300 mil"
-            ].map((opt) => (
-              <OptionButton
-                key={opt}
-                label={opt}
-                selected={answers.mediaFaturamento === opt}
-                onClick={() => selectAndNext("mediaFaturamento", opt)}
-              />
-            ))}
-          </QuestionScreen>
-        );
-
-      case 8:
-        return (
           <div className="flex flex-col items-center text-center gap-5 py-8">
             <div className="w-16 h-16 rounded-2xl bg-secondary/20 flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-secondary" />
@@ -614,16 +717,16 @@ const Quiz = () => {
 
             <div className="space-y-1">
               <h2 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">
-                Gerando seu diagnóstico
+                Estamos analisando seu perfil
               </h2>
               <p className="text-primary font-semibold text-base">
-                personalizado para você
+                e comparando com padrões da sua região
               </p>
             </div>
 
             <p className="text-muted-foreground text-sm max-w-sm">
-              Estamos cruzando suas respostas para identificar as melhores
-              oportunidades para a sua farmácia.
+              Identificando oportunidades escondidas de faturamento no seu
+              estoque.
             </p>
 
             <div className="w-full max-w-md space-y-2">
@@ -676,7 +779,7 @@ const Quiz = () => {
           </div>
         );
 
-      case 9:
+      case 8:
         return (
           <div className="flex flex-col gap-5 py-4">
             <div className="text-center space-y-2">
@@ -684,11 +787,10 @@ const Quiz = () => {
                 <ShoppingBag className="w-7 h-7 text-primary" />
               </div>
               <h2 className="text-xl md:text-2xl font-extrabold text-foreground leading-tight">
-                Seu diagnóstico está pronto!
+                Seu diagnóstico está pronto (faltam 10 segundos)
               </h2>
               <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                Preencha os dados abaixo para liberar o resultado personalizado
-                da sua farmácia.
+                Preencha para liberar suas oportunidades de lucro.
               </p>
             </div>
 
@@ -715,12 +817,37 @@ const Quiz = () => {
                   Informe um e-mail válido.
                 </p>
               )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <select
+                  value={answers.estado}
+                  onChange={(e) => setAnswer("estado", normalizeState(e.target.value))}
+                  className="w-full p-4 rounded-lg border-2 border-border bg-card text-foreground font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                >
+                  <option value="" disabled>
+                    Estado
+                  </option>
+                  <option value="PI">Piauí (PI)</option>
+                  <option value="MA">Maranhão (MA)</option>
+                </select>
+
+                <QuizInput
+                  value={answers.cidade}
+                  onChange={(v) => setAnswer("cidade", v)}
+                  placeholder="Cidade"
+                />
+              </div>
               <QuizInput
                 value={answers.cnpj}
                 onChange={(v) => setAnswer("cnpj", v)}
                 placeholder="CNPJ 00.000.000/0000-00"
                 mask="cnpj"
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-semibold text-primary text-center">
+              <span className="rounded-lg bg-primary/10 px-3 py-2">Frete grátis MA/PI</span>
+              <span className="rounded-lg bg-primary/10 px-3 py-2">Atendimento especialista</span>
+              <span className="rounded-lg bg-primary/10 px-3 py-2">Sugestão personalizada</span>
             </div>
 
             <QuizButton
@@ -732,10 +859,18 @@ const Quiz = () => {
                 setIsSendingSheet(true);
                 const leadName = getLeadName();
                 const normalizedPhone = answers.telefone.replace(/\D/g, "");
+                const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
 
                 await Promise.allSettled([
                   sendSheetData(),
-                  sendNewTracking(leadName, normalizedPhone, answers.email),
+                  sendNewTracking(
+                    leadName,
+                    normalizedPhone,
+                    answers.email,
+                    normalizedCnpj,
+                    answers.estado,
+                    answers.cidade
+                  ),
                 ]);
 
                 setSheetSent(true);
@@ -745,7 +880,9 @@ const Quiz = () => {
               disabled={
                 answers.telefone.length < 14 ||
                 !isValidEmail(answers.email) ||
-                !validarCNPJ(answers.cnpj)
+                !validarCNPJ(answers.cnpj) ||
+                !answers.estado ||
+                !answers.cidade
               }
               variant="cta"
             >
@@ -754,7 +891,7 @@ const Quiz = () => {
           </div>
         );
 
-      case 10: {
+      case 9: {
         const leadName = getLeadName();
         const firstName = leadName.split(" ")[0] || displayName;
         const insights = getDiagnosisInsights(answers, firstName);
@@ -774,7 +911,7 @@ const Quiz = () => {
                 <span className="text-primary">
                   {insights.length} oportunidade{insights.length !== 1 ? "s" : ""}
                 </span>{" "}
-                na sua farmácia
+                na sua loja
               </h2>
             </div>
 
@@ -798,99 +935,33 @@ const Quiz = () => {
               ))}
             </div>
 
-            {/* CTA */}
             <div className="flex flex-col gap-3 pt-1">
               <p className="text-sm text-muted-foreground text-center">
-                Nossos especialistas já ajudaram dezenas de farmácias com este
-                perfil. Fale agora e receba uma sugestão de mix personalizada.
+                Veja produtos que você deveria parar de comprar, categorias que
+                podem dobrar seu giro e uma estimativa de ganho mensal com uma
+                sugestão personalizada.
               </p>
 
-              <QuizButton
-                onClick={async () => {
-                if (isSubmittingLead) {
-                  return;
-                }
+              <div className="w-full rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    Estamos te redirecionando em {redirectSeconds} segundo
+                    {redirectSeconds === 1 ? "" : "s"}
+                  </p>
+                  <span className="text-sm font-bold text-primary tabular-nums">
+                    {Math.round(redirectProgress)}%
+                  </span>
+                </div>
 
-                setIsSubmittingLead(true);
-
-                const utms = getUTMs();
-                const fbclid = getFbclid();
-                const normalizedPhone = answers.telefone.replace(/\D/g, "");
-                const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
-                const leadName = getLeadName();
-
-                try {
-                  fbq("track", "Lead");
-                } catch (_) {
-                  // pixel pode não estar carregado
-                }
-
-                const newTrackingPromise = sendNewTracking(leadName, normalizedPhone, answers.email);
-
-                const crmPromise = fetch(CRM_URL, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    leadCaptureKey: LEAD_CAPTURE_KEY,
-                    name: leadName,
-                    phone: normalizedPhone,
-                    document: normalizedCnpj,
-                    documentType: "cnpj",
-                    utm_source: utms.utm_source,
-                    utm_medium: utms.utm_medium,
-                    utm_campaign: utms.utm_campaign,
-                    utm_content: utms.utm_content,
-                    utm_term: utms.utm_term,
-                    fbclid,
-                  }),
-                })
-                  .then(async (response) => {
-                    const crmData = await response.json().catch(() => null);
-
-                    if (!response.ok) {
-                      console.error("CRM lead capture failed", {
-                        status: response.status,
-                        response: crmData,
-                      });
-                    } else if (crmData?.duplicate) {
-                      console.warn("CRM lead already exists", crmData);
-                    } else {
-                      console.info("CRM lead created successfully", crmData);
-                    }
-                  })
-                  .catch((error) => {
-                    console.error("CRM lead capture request error", error);
-                  });
-
-                if (!sheetSent) {
-                  await sendSheetData();
-                  setSheetSent(true);
-                }
-
-                await Promise.allSettled([crmPromise, newTrackingPromise]);
-
-                const phone = WHATSAPP_NUMBERS[answers.estado] ?? WHATSAPP_NUMBERS["PI"];
-                const msg = encodeURIComponent(
-                  `Olá! Fiz o diagnóstico no site e gostaria de falar com um especialista.\n\n` +
-                    `Nome: ${leadName}\n` +
-                    `Telefone: ${answers.telefone}\n` +
-                    `CNPJ: ${answers.cnpj}`
-                );
-                window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
-                setIsSubmittingLead(false);
-              }}
-              disabled={isSubmittingLead}
-              variant="cta"
-            >
-              <span className="flex items-center justify-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                {isSubmittingLead
-                  ? "Enviando seus dados..."
-                  : "Falar com um especialista agora"}
-              </span>
-            </QuizButton>
+                <div className="h-3 w-full rounded-full bg-border overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${redirectProgress}%` }}
+                    transition={{ duration: 0.15, ease: "linear" }}
+                  />
+                </div>
+              </div>
           </div>
         </div>
         );
