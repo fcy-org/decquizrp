@@ -134,6 +134,8 @@ interface NewTrackingPayload {
 }
 
 async function sendNewTracking(p: NewTrackingPayload) {
+  const trackingParams = getTrackingParams(p.eventId);
+  console.log("[NT] payload →", { ...p, ...trackingParams });
   try {
     const response = await fetch(NEW_TRACKING_URL, {
       method: "POST",
@@ -163,7 +165,7 @@ async function sendNewTracking(p: NewTrackingPayload) {
         areaMelhorar: p.areaMelhorar,
         produtos: p.produtos,
         // rastreamento Meta
-        ...getTrackingParams(p.eventId),
+        ...trackingParams,
       }),
     });
 
@@ -436,6 +438,8 @@ const Quiz = () => {
     const utms = PAGE_UTMS;
     const fbclid = PAGE_FBCLID;
 
+    console.log("[Sheets] utm →", utms, "fbclid →", fbclid);
+
     const sheetsPayload = JSON.stringify({
       nomeCompleto: leadName,
       nome: leadName,
@@ -456,7 +460,11 @@ const Quiz = () => {
       produtos: answers.produtos,
       mediaFaturamento: answers.mediaFaturamento,
       fbclid,
-      ...utms,
+      utm_source: utms.utm_source,
+      utm_medium: utms.utm_medium,
+      utm_campaign: utms.utm_campaign,
+      utm_content: utms.utm_content,
+      utm_term: utms.utm_term,
     });
 
     try {
@@ -506,7 +514,7 @@ const Quiz = () => {
     const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
     const leadName = getLeadName();
     const eventId = eventIdRef.current;
-    const fbc = getFbc();
+    const fbc = getFbc(PAGE_FBCLID);
     const fbp = getFbp();
 
     // eventID correlaciona o evento browser com a chamada server-side para deduplicação
@@ -518,6 +526,8 @@ const Quiz = () => {
 
     // New Tracking — protegido pelo newTrackingSentRef, não dispara duas vezes
     const newTrackingPromise = sendNewTrackingOnce();
+
+    console.log("[CRM] utm →", utms, "fbclid →", fbclid, "fbc →", fbc);
 
     // CRM — agora recebe todos os campos de rastreamento alinhados ao New Tracking
     const crmPromise = fetch(CRM_URL, {
