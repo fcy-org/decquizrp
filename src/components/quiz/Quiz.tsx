@@ -109,12 +109,13 @@ function getTrackingParams() {
   };
 }
 
-async function sendWebhookLead(answers: Answers) {
+async function sendWebhookLead(answers: Answers, eventId?: string) {
   const leadName = answers.nomeCompleto || answers.nomeUsuario || "Lead";
   const normalizedPhone = answers.telefone.replace(/\D/g, "");
   const normalizedCnpj = answers.cnpj.replace(/\D/g, "");
   const fbclid = getFbclid();
   const tracking = getTrackingParams();
+  if (eventId) tracking.event_id = eventId;
 
   try {
     const response = await fetch(WEBHOOK_URL, {
@@ -302,7 +303,8 @@ const Quiz = () => {
   });
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [isLoadingLead, setIsLoadingLead] = useState(false);
-  const [webhookSent, setWebhookSent] = useState(false);
+  const webhookSentRef = useRef(false);
+  const leadEventIdRef = useRef(`lead-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const [diagnosisProgress, setDiagnosisProgress] = useState(0);
   const [redirectProgress, setRedirectProgress] = useState(0);
   const [redirectSeconds, setRedirectSeconds] = useState(3);
@@ -400,8 +402,12 @@ const Quiz = () => {
 
     setIsSubmittingLead(true);
 
-    if (!webhookSent) {
-      await sendWebhookLead(answers);
+    if (!webhookSentRef.current) {
+      await sendWebhookLead(answers, leadEventIdRef.current);
+      webhookSentRef.current = true;
+      try {
+        fbq("track", "Lead", {}, { eventID: leadEventIdRef.current });
+      } catch (_) {}
     }
 
     const leadName = getLeadName();
@@ -787,10 +793,10 @@ const Quiz = () => {
                 }
 
                 setIsLoadingLead(true);
-                await sendWebhookLead(answers);
-                setWebhookSent(true);
+                await sendWebhookLead(answers, leadEventIdRef.current);
+                webhookSentRef.current = true;
                 try {
-                  fbq("track", "Lead");
+                  fbq("track", "Lead", {}, { eventID: leadEventIdRef.current });
                 } catch (_) {}
                 setIsLoadingLead(false);
                 next();
