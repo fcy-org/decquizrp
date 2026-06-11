@@ -34,38 +34,9 @@
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
 
+      fbq('set', 'autoConfig', false, '1816827349038444');
       fbq('init', '1816827349038444');
       fbq('track', 'PageView');
-
-      // Bloqueia eventos Lead disparados por fontes externas (extensões, plugins).
-      // Fingerprint identificado: parâmetro cs_est presente ou eventID com prefixo ob3_plugin.
-      ;(function () {
-        if (!window.fbq) return;
-        function _wrap(fn) {
-          return function () {
-            var a = arguments;
-            if (a[0] === 'track' && a[1] === 'Lead') {
-              var data = a[2] || {};
-              var opts = a[3] || {};
-              if (data.cs_est !== undefined) return;
-              if (typeof opts.eventID === 'string' && opts.eventID.indexOf('ob3_plugin') === 0) return;
-            }
-            return fn.apply(this, a);
-          };
-        }
-        if (window.fbq.callMethod) {
-          window.fbq.callMethod = _wrap(window.fbq.callMethod);
-        } else {
-          Object.defineProperty(window.fbq, 'callMethod', {
-            configurable: true,
-            set: function (fn) {
-              Object.defineProperty(window.fbq, 'callMethod', {
-                configurable: true, writable: true, value: _wrap(fn)
-              });
-            }
-          });
-        }
-      })();
     </script>
   </head>
 
