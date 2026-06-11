@@ -165,13 +165,13 @@ function updateQuizHash(step: number) {
 }
 
 function trackQuizStep(step: number) {
+  updateQuizHash(step);
+
+  if (typeof fbq !== "function") {
+    return;
+  }
+
   try {
-    updateQuizHash(step);
-
-    if (typeof fbq !== "function") {
-      return;
-    }
-
     fbq("trackCustom", "QuizStepView", {
       quiz_name: "rio_piranhas_diagnostico",
       step_number: step,
@@ -405,9 +405,6 @@ const Quiz = () => {
     if (!webhookSentRef.current) {
       await sendWebhookLead(answers, leadEventIdRef.current);
       webhookSentRef.current = true;
-      try {
-        fbq("track", "Lead", {}, { eventID: leadEventIdRef.current });
-      } catch (_) {}
     }
 
     const leadName = getLeadName();
