@@ -420,8 +420,7 @@ const Quiz = () => {
         `Área que quer melhorar: ${answers.areaMelhorar}`
     );
 
-    // TEMP: redirect desativado para análise — reativar após revisão
-    // window.location.href = `https://wa.me/${phone}?text=${msg}`;
+    window.location.href = `https://wa.me/${phone}?text=${msg}`;
   };
 
   useEffect(() => {
