@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/webhooks/:path*",
+      "destination": "https://newtracking-sales-sys.vercel.app/api/webhooks/:path*"
+    }
+  ]
+}
