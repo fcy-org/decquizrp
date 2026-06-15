@@ -793,7 +793,7 @@ const Quiz = () => {
                 await sendWebhookLead(answers, leadEventIdRef.current);
                 webhookSentRef.current = true;
                 try {
-                  fbq("track", "Lead", {}, { eventID: leadEventIdRef.current });
+                  fbq("track", "Lead", { value: 0, currency: "BRL" }, { eventID: leadEventIdRef.current });
                 } catch (_) {}
                 setIsLoadingLead(false);
                 next();
