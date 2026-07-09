@@ -227,9 +227,9 @@ function getDiagnosisInsights(answers: Answers, name: string): DiagnosisInsight[
 
   // Insight 2: categoria de maior oportunidade
   const catMsg: Record<string, { title: string; text: string }> = {
-    "Linha Infantil": {
-      title: "Linha Infantil: fidelização garantida",
-      text: "Produtos infantis têm alta taxa de recompra — clientes voltam todo mês. Uma boa exposição e mix atualizado transforma essa categoria em renda recorrente.",
+    "Linha Infantil (fraldas)": {
+      title: "Fraldas e Linha Infantil: fidelização garantida",
+      text: "Fraldas e produtos infantis têm alta taxa de recompra — clientes voltam todo mês. Comprar com preço de distribuidor e manter uma boa exposição transforma essa categoria em renda recorrente.",
     },
     "Higiene Bucal": {
       title: "Higiene Bucal: maior giro do Nordeste",
@@ -464,19 +464,24 @@ const Quiz = () => {
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
 
+            <span className="inline-flex items-center rounded-full bg-primary/10 text-primary text-xs md:text-sm font-semibold px-3 py-1">
+              📦 Fralda parada é só um dos sinais
+            </span>
+
             <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">
               Seu estoque pode estar travando{" "}
-              <span className="text-primary">o lucro da sua loja</span>
+              <span className="text-primary">o lucro da sua Farmácia</span>
             </h1>
 
             <p className="text-muted-foreground text-base md:text-lg max-w-md">
-              Descubra em 2 minutos quais produtos de higiene e beleza podem
-              destravar seu faturamento.
+              Descubra em 2 minutos se fraldas e outras categorias de higiene
+              e beleza estão travando seu faturamento — e libere condição de
+              distribuidor com boleto a prazo.
             </p>
 
             <p className="text-primary font-semibold text-sm md:text-base max-w-md">
-              +120 lojas no MA e PI já aplicaram esse diagnóstico. Frete grátis
-              para Maranhão e Piauí.
+              +120 Farmácias no Maranhão e Piauí já aplicaram esse diagnóstico.
+              Frete grátis para Maranhão e Piauí.
             </p>
 
             <div className="w-full mt-4">
@@ -619,7 +624,7 @@ const Quiz = () => {
             subtitle="(Pode selecionar mais de uma opção)"
           >
             {[
-              "Linha Infantil",
+              "Linha Infantil (fraldas)",
               "Higiene Bucal",
               "Capilar",
               "Cuidado com a Pele"
